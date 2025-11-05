@@ -30,6 +30,10 @@ const supabase = createClient(
   }
 );
 
+// Cloudinary configuration
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = 'products'; // We'll use unsigned upload
+
 export default function ProductForm({ 
   product = null, 
   category,
@@ -239,36 +243,37 @@ export default function ProductForm({
     };
     reader.readAsDataURL(file);
 
-    await uploadImageToSupabase(file);
+    await uploadImageToCloudinary(file);
   };
 
-  const uploadImageToSupabase = async (file) => {
+  const uploadImageToCloudinary = async (file) => {
     setUploadingImage(true);
     const uploadToast = toast.loading('Uploading image...');
-    
+
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `products/${fileName}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      formData.append('folder', 'products');
 
-      const { data, error } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type
-        });
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Upload failed');
+      }
 
-      const { data: urlData } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-
-      const publicUrl = urlData.publicUrl;
+      const data = await response.json();
+      const publicUrl = data.secure_url;
 
       setFormData(prev => ({ ...prev, image_url: publicUrl }));
-      
+
       toast.success('Image uploaded successfully!', { id: uploadToast });
     } catch (error) {
       console.error('Error uploading image:', error);
