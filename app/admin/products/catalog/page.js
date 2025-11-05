@@ -618,30 +618,8 @@ const handleProductSubmit = async (productData) => {
 
       if (productError) throw productError;
 
-      // Delete image from storage if exists
-      if (product.image_url) {
-        try {
-          // Extract file path from URL
-          const urlParts = product.image_url.split("/");
-          const bucketIndex = urlParts.findIndex(
-            (part) => part === "product-images"
-          );
-
-          if (bucketIndex !== -1) {
-            const filePath = urlParts.slice(bucketIndex + 1).join("/");
-
-            const { error: storageError } = await supabase.storage
-              .from("product-images")
-              .remove([filePath]);
-
-            if (storageError) {
-              console.error("Error deleting image:", storageError);
-            }
-          }
-        } catch (storageError) {
-          console.error("Error parsing image URL:", storageError);
-        }
-      }
+      // Note: Cloudinary images don't need manual deletion from storage
+      // They can be managed from Cloudinary dashboard if needed
 
       toast.success("Product deleted successfully", { id: deleteToast });
       loadCategories();
@@ -657,21 +635,26 @@ const handleProductSubmit = async (productData) => {
     if (!file) return null;
 
     try {
-      const user = await getUser();
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'products'); // Using the same preset
+      formData.append('folder', 'categories');
 
-      const { data, error } = await supabase.storage
-        .from("images")
-        .upload(fileName, file);
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Upload failed');
+      }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("images").getPublicUrl(fileName);
-
-      return publicUrl;
+      const data = await response.json();
+      return data.secure_url;
     } catch (error) {
       console.error("Error uploading image:", error);
       return null;
