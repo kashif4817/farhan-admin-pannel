@@ -295,6 +295,22 @@ const handleProductSubmit = async (productData) => {
       base_price: parseFloat(productData.base_price) || 0,
       discount_percentage: parseFloat(productData.discount_percentage) || 0,
       tax_rate: parseFloat(productData.tax_rate) || 0,
+      // E-commerce fields
+      stock_quantity: productData.stock_quantity ? parseInt(productData.stock_quantity) : 0,
+      brand: productData.brand || null,
+      material: productData.material || null,
+      weight: productData.weight || null,
+      // Marketing flags
+      is_hot_item: productData.is_hot_item || false,
+      is_new_arrival: productData.is_new_arrival || false,
+      is_best_seller: productData.is_best_seller || false,
+      is_featured: productData.is_featured || false,
+      is_on_sale: productData.is_on_sale || false,
+      // Eyeglasses specific (optional - from tab 3)
+      frame_type: productData.frame_type || null,
+      lens_type: productData.lens_type || null,
+      gender: productData.gender || null,
+      color: productData.color || null,
     };
 
     let productId;
@@ -341,6 +357,8 @@ const handleProductSubmit = async (productData) => {
               .update({
                 name: variant.name,
                 price: parseFloat(variant.price),
+                sku: variant.sku || null,
+                stock_quantity: variant.stock_quantity ? parseInt(variant.stock_quantity) : 0,
                 sort_order: index,
               })
               .eq("id", variant.id);
@@ -363,6 +381,8 @@ const handleProductSubmit = async (productData) => {
                 product_id: productId,
                 name: variant.name,
                 price: parseFloat(variant.price),
+                sku: variant.sku || null,
+                stock_quantity: variant.stock_quantity ? parseInt(variant.stock_quantity) : 0,
                 sort_order: index,
               })
               .select()
@@ -386,30 +406,12 @@ const handleProductSubmit = async (productData) => {
 
       if (removedVariantIds.length > 0) {
         console.log("🗑️ Deleting removed variants:", removedVariantIds);
-        
-        // Delete ingredients for removed variants first
-        await supabase
-          .from("product_variant_ingredients")
-          .delete()
-          .in("variant_id", removedVariantIds);
 
-        // Then delete the variants
+        // Delete the variants
         await supabase
           .from("product_variants")
           .delete()
           .in("id", removedVariantIds);
-      }
-
-      // Delete ingredients that were explicitly marked for deletion
-      if (
-        productData.deletedIngredientIds &&
-        productData.deletedIngredientIds.length > 0
-      ) {
-        console.log("🗑️ Deleting marked ingredients:", productData.deletedIngredientIds);
-        await supabase
-          .from("product_variant_ingredients")
-          .delete()
-          .in("id", productData.deletedIngredientIds);
       }
 
     } else {
@@ -444,6 +446,8 @@ const handleProductSubmit = async (productData) => {
               product_id: productId,
               name: variant.name,
               price: parseFloat(variant.price),
+              sku: variant.sku || null,
+              stock_quantity: variant.stock_quantity ? parseInt(variant.stock_quantity) : 0,
               sort_order: index,
             })
             .select()
@@ -459,106 +463,94 @@ const handleProductSubmit = async (productData) => {
 
     console.log("\n📊 Variant ID Mapping:", variantIdMapping);
 
-    // ===== HANDLE INGREDIENTS =====
-    console.log("\n🥘 Processing ingredients...");
-    
-    if (productData.ingredients && productData.ingredients.length > 0) {
-      const ingredientsToInsert = [];
-      const ingredientsToUpdate = [];
+    // ===== HANDLE ADDITIONAL IMAGES =====
+    console.log("\n🖼️ Processing additional images...");
 
-      for (let i = 0; i < productData.ingredients.length; i++) {
-        const ing = productData.ingredients[i];
-        
-        console.log(`\n🔍 Ingredient ${i + 1}:`, {
-          id: ing.id,
-          variant_key: ing.variant_key,
-          item: ing.inventory_item_id,
-          isExisting: ing.isExisting
-        });
+    if (editingProduct) {
+      // Delete existing additional images for update
+      await supabase
+        .from("product_images")
+        .delete()
+        .eq("product_id", productId);
+    }
 
-        // Skip invalid ingredients
-        if (!ing.inventory_item_id || !ing.quantity || !ing.unit_id) {
-          console.warn("⚠️ Skipping invalid ingredient");
-          continue;
-        }
+    if (productData.additional_images && productData.additional_images.length > 0) {
+      const imagesToInsert = productData.additional_images.map((img, index) => ({
+        product_id: productId,
+        image_url: img.image_url,
+        alt_text: img.alt_text || null,
+        sort_order: index,
+        is_primary: img.is_primary || false,
+      }));
 
-        let variantId = null;
+      const { error: imagesError } = await supabase
+        .from("product_images")
+        .insert(imagesToInsert);
 
-        // Map variant_key to actual variant_id
-        if (ing.variant_key && ing.variant_key !== "base") {
-          variantId = variantIdMapping[ing.variant_key];
-          
-          console.log(`  Mapping "${ing.variant_key}" → ${variantId || "NOT FOUND"}`);
-
-          if (!variantId) {
-            console.error(`❌ Cannot find variant for key: ${ing.variant_key}`);
-            throw new Error(
-              `Invalid variant reference: ${ing.variant_key}`
-            );
-          }
-        } else {
-          console.log("  Base product ingredient (no variant)");
-        }
-
-        const ingredientData = {
-          product_id: productId,
-          variant_id: variantId,
-          inventory_item_id: ing.inventory_item_id,
-          quantity: parseFloat(ing.quantity),
-          unit_id: ing.unit_id,
-        };
-
-        // Check if this is an existing ingredient that needs updating
-        const isExistingInDB = ing.isExisting && 
-                               ing.id && 
-                               !ing.id.toString().startsWith('temp_');
-
-        if (isExistingInDB) {
-          // UPDATE existing ingredient
-          console.log(`  ✏️ Will update ingredient ID: ${ing.id}`);
-          ingredientsToUpdate.push({
-            id: ing.id,
-            data: ingredientData
-          });
-        } else {
-          // INSERT new ingredient
-          console.log("  ➕ Will insert new ingredient");
-          ingredientsToInsert.push(ingredientData);
-        }
+      if (imagesError) {
+        console.error("❌ Images insert error:", imagesError);
+        throw new Error(`Failed to insert images: ${imagesError.message}`);
       }
+      console.log(`✅ Inserted ${imagesToInsert.length} additional images`);
+    }
 
-      // Perform updates
-      if (ingredientsToUpdate.length > 0) {
-        console.log(`\n📝 Updating ${ingredientsToUpdate.length} ingredients...`);
-        for (const update of ingredientsToUpdate) {
-          const { error: updateError } = await supabase
-            .from("product_variant_ingredients")
-            .update(update.data)
-            .eq("id", update.id);
+    // ===== HANDLE ATTRIBUTES =====
+    console.log("\n🏷️ Processing attributes...");
 
-          if (updateError) {
-            console.error("❌ Update error:", updateError);
-            throw new Error(`Failed to update ingredient: ${updateError.message}`);
-          }
-        }
-        console.log("✅ All updates completed");
+    if (editingProduct) {
+      // Delete existing attributes for update
+      await supabase
+        .from("product_attributes")
+        .delete()
+        .eq("product_id", productId);
+    }
+
+    if (productData.attributes && productData.attributes.length > 0) {
+      const attributesToInsert = productData.attributes.map((attr) => ({
+        product_id: productId,
+        attribute_name: attr.attribute_name,
+        attribute_value: attr.attribute_value,
+      }));
+
+      const { error: attributesError } = await supabase
+        .from("product_attributes")
+        .insert(attributesToInsert);
+
+      if (attributesError) {
+        console.error("❌ Attributes insert error:", attributesError);
+        throw new Error(`Failed to insert attributes: ${attributesError.message}`);
       }
+      console.log(`✅ Inserted ${attributesToInsert.length} attributes`);
+    }
 
-      // Perform inserts
-      if (ingredientsToInsert.length > 0) {
-        console.log(`\n📥 Inserting ${ingredientsToInsert.length} new ingredients...`);
-        console.log("Data:", JSON.stringify(ingredientsToInsert, null, 2));
-        
-        const { error: insertError } = await supabase
-          .from("product_variant_ingredients")
-          .insert(ingredientsToInsert);
+    // ===== HANDLE SPECIFICATIONS =====
+    console.log("\n📋 Processing specifications...");
 
-        if (insertError) {
-          console.error("❌ Insert error:", insertError);
-          throw new Error(`Failed to insert ingredients: ${insertError.message}`);
-        }
-        console.log("✅ All inserts completed");
+    if (editingProduct) {
+      // Delete existing specifications for update
+      await supabase
+        .from("product_specifications")
+        .delete()
+        .eq("product_id", productId);
+    }
+
+    if (productData.specifications && productData.specifications.length > 0) {
+      const specificationsToInsert = productData.specifications.map((spec, index) => ({
+        product_id: productId,
+        spec_name: spec.spec_name,
+        spec_value: spec.spec_value,
+        sort_order: spec.sort_order !== undefined ? spec.sort_order : index,
+      }));
+
+      const { error: specificationsError } = await supabase
+        .from("product_specifications")
+        .insert(specificationsToInsert);
+
+      if (specificationsError) {
+        console.error("❌ Specifications insert error:", specificationsError);
+        throw new Error(`Failed to insert specifications: ${specificationsError.message}`);
       }
+      console.log(`✅ Inserted ${specificationsToInsert.length} specifications`);
     }
 
     console.log("\n🎉 Product saved successfully!");
@@ -1103,40 +1095,9 @@ const handleProductSubmit = async (productData) => {
 
                                     if (variantsError) throw variantsError;
 
-                                    // Fetch variant ingredients
-                                    const {
-                                      data: ingredients,
-                                      error: ingredientsError,
-                                    } = await supabase
-                                      .from("product_variant_ingredients")
-                                      .select(
-                                        `
-                                         id,
-                                         product_id,
-                                         variant_id,
-                                         inventory_item_id,
-                                         quantity,
-                                         unit_id,
-                                         inventory_items (
-                                           id,
-                                           name,
-                                           sku,
-                                           current_stock,
-                                           unit_id,
-                                           units (id, name, abbreviation)
-                                         ),
-                                         units (id, name, abbreviation)
-                                      `
-                                      )
-                                      .eq("product_id", product.id);
-
-                                    if (ingredientsError)
-                                      throw ingredientsError;
-
                                     setEditingProduct({
                                       ...product,
                                       variants: variants || [],
-                                      ingredients: ingredients || [],
                                     });
                                     setSelectedCategory(
                                       categories.find((c) =>
@@ -1248,40 +1209,9 @@ const handleProductSubmit = async (productData) => {
 
                                     if (variantsError) throw variantsError;
 
-                                    // Fetch variant ingredients
-                                    const {
-                                      data: ingredients,
-                                      error: ingredientsError,
-                                    } = await supabase
-                                      .from("product_variant_ingredients")
-                                      .select(
-                                        `
-          id,
-          product_id,
-          variant_id,
-          inventory_item_id,
-          quantity,
-          unit_id,
-          inventory_items (
-            id,
-            name,
-            sku,
-            current_stock,
-            unit_id,
-            units (id, name, abbreviation)
-          ),
-          units (id, name, abbreviation)
-        `
-                                      )
-                                      .eq("product_id", product.id);
-
-                                    if (ingredientsError)
-                                      throw ingredientsError;
-
                                     setEditingProduct({
                                       ...product,
                                       variants: variants || [],
-                                      ingredients: ingredients || [],
                                     });
                                     setSelectedCategory(
                                       categories.find((c) =>

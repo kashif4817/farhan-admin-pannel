@@ -1,20 +1,17 @@
-// components/forms/ProductForm.js - COMPLETE with Fixed Unit Display
+// components/forms/ProductForm.js - E-commerce Version
 "use client";
 import { useState, useRef, useEffect } from 'react';
-import { 
-  Upload, 
-  X, 
+import {
+  Upload,
+  X,
   Save,
   DollarSign,
   Package,
   Tag,
   Plus,
-  Edit2,
-  Trash2,
-  Scale,
-  AlertTriangle,
-  ChevronDown,
-  Info
+  Box,
+  Ruler,
+  Weight
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import toast from 'react-hot-toast';
@@ -34,11 +31,11 @@ const supabase = createClient(
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = 'products'; // We'll use unsigned upload
 
-export default function ProductForm({ 
-  product = null, 
+export default function ProductForm({
+  product = null,
   category,
   onSave,
-  isLoading = false 
+  isLoading = false
 }) {
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState({
@@ -47,33 +44,30 @@ export default function ProductForm({
     image_url: '',
     base_price: '',
     discount_percentage: '',
-    tax_rate: ''
+    tax_rate: '',
+    // E-commerce specific fields
+    stock_quantity: '',
+    brand: '',
+    weight: '',
+    material: '',
+    // Marketing flags
+    is_hot_item: false,
+    is_new_arrival: false,
+    is_best_seller: false,
+    is_featured: false,
+    is_on_sale: false,
+    // Eyeglasses specific (optional - tab 3)
+    frame_type: '',
+    lens_type: '',
+    gender: '',
+    color: ''
   });
-  
+
   const [variants, setVariants] = useState([{ name: '', price: '' }]);
-  const [selectedVariantForIngredients, setSelectedVariantForIngredients] = useState(null);
-  const [variantIngredients, setVariantIngredients] = useState({});
-  const [deletedIngredientIds, setDeletedIngredientIds] = useState([]);
-  const [inventoryItems, setInventoryItems] = useState([]);
-  const [units, setUnits] = useState([]);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [editingIngredient, setEditingIngredient] = useState(null);
-  const [loadingIngredients, setLoadingIngredients] = useState(false);
   const fileInputRef = useRef(null);
-
-  // Unit compatibility groups - units that can be converted between each other
-  const unitGroups = {
-    'weight': ['g', 'kg'],
-    'volume': ['ml', 'l', 'L'],
-    'quantity': ['pcs', 'dz', 'pc', 'dozen']
-  };
-
-  useEffect(() => {
-    fetchInventoryItems();
-    fetchUnits();
-  }, []);
 
   useEffect(() => {
     if (product) {
@@ -83,16 +77,25 @@ export default function ProductForm({
         image_url: product.image_url || '',
         base_price: product.base_price || '',
         discount_percentage: product.discount_percentage || '',
-        tax_rate: product.tax_rate || ''
+        tax_rate: product.tax_rate || '',
+        stock_quantity: product.stock_quantity || '',
+        brand: product.brand || '',
+        weight: product.weight || '',
+        material: product.material || '',
+        is_hot_item: product.is_hot_item || false,
+        is_new_arrival: product.is_new_arrival || false,
+        is_best_seller: product.is_best_seller || false,
+        is_featured: product.is_featured || false,
+        is_on_sale: product.is_on_sale || false,
+        frame_type: product.frame_type || '',
+        lens_type: product.lens_type || '',
+        gender: product.gender || '',
+        color: product.color || ''
       });
-      
+
       const productVariants = product.variants?.length > 0 ? product.variants : [{ name: '', price: '' }];
       setVariants(productVariants);
       setImagePreview(product.image_url || '');
-      
-      if (product.id) {
-        fetchVariantIngredients(product.id, productVariants);
-      }
     } else {
       resetForm();
     }
@@ -105,119 +108,27 @@ export default function ProductForm({
       image_url: '',
       base_price: '',
       discount_percentage: '',
-      tax_rate: ''
+      tax_rate: '',
+      stock_quantity: '',
+      brand: '',
+      weight: '',
+      material: '',
+      is_hot_item: false,
+      is_new_arrival: false,
+      is_best_seller: false,
+      is_featured: false,
+      is_on_sale: false,
+      frame_type: '',
+      lens_type: '',
+      gender: '',
+      color: ''
     });
     setVariants([{ name: '', price: '' }]);
-    setVariantIngredients({});
-    setSelectedVariantForIngredients(null);
-    setDeletedIngredientIds([]);
     setImagePreview('');
     setImageFile(null);
-    setEditingIngredient(null);
     setActiveTab('basic');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
-    }
-  };
-
-  const fetchInventoryItems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('inventory_items')
-        .select(`
-          id,
-          name,
-          current_stock,
-          unit_id,
-          units (id, name, abbreviation)
-        `)
-        .order('name');
-
-      if (error) throw error;
-      
-      console.log('Fetched inventory items with units:', data);
-      setInventoryItems(data || []);
-    } catch (error) {
-      console.error('Error fetching inventory:', error);
-      toast.error('Error loading inventory items');
-    }
-  };
-
-  const fetchUnits = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('units')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setUnits(data || []);
-    } catch (error) {
-      console.error('Error fetching units:', error);
-      toast.error('Error loading units');
-    }
-  };
-
-  const fetchVariantIngredients = async (productId, productVariants) => {
-    setLoadingIngredients(true);
-    try {
-      const { data, error } = await supabase
-        .from('product_variant_ingredients')
-        .select(`
-          id,
-          product_id,
-          variant_id,
-          inventory_item_id,
-          quantity,
-          unit_id,
-          inventory_items (
-            id,
-            name,
-            current_stock,
-            unit_id,
-            units (id, name, abbreviation)
-          ),
-          units (id, name, abbreviation)
-        `)
-        .eq('product_id', productId);
-
-      if (error) throw error;
-
-      // Group ingredients by variant
-      const grouped = {};
-      
-      if (data && data.length > 0) {
-        data.forEach(ing => {
-          const key = ing.variant_id || 'base';
-          if (!grouped[key]) grouped[key] = [];
-          
-          grouped[key].push({
-            id: ing.id,
-            inventory_item_id: ing.inventory_item_id,
-            quantity: ing.quantity,
-            unit_id: ing.unit_id,
-            item_name: ing.inventory_items?.name || 'Unknown Item',
-            unit_abbr: ing.units?.abbreviation || 'N/A',
-            inventory_unit_abbr: ing.inventory_items?.units?.abbreviation || 'N/A',
-            isExisting: true
-          });
-        });
-      }
-      
-      setVariantIngredients(grouped);
-      
-      // Set first variant/base as selected
-      if (productVariants.length > 0 && productVariants[0].id) {
-        setSelectedVariantForIngredients(productVariants[0].id);
-      } else {
-        setSelectedVariantForIngredients('base');
-      }
-      
-    } catch (error) {
-      console.error('Error fetching ingredients:', error);
-      toast.error('Error loading ingredients');
-    } finally {
-      setLoadingIngredients(false);
     }
   };
 
@@ -299,289 +210,42 @@ export default function ProductForm({
 
   const removeVariant = (index) => {
     if (variants.length > 1) {
-      const variantToRemove = variants[index];
-      
-      // Remove ingredients for this variant
-      if (variantToRemove.id) {
-        setVariantIngredients(prev => {
-          const newIngredients = { ...prev };
-          delete newIngredients[variantToRemove.id];
-          return newIngredients;
-        });
-      }
-      
       setVariants(variants.filter((_, i) => i !== index));
       toast.success('Variant removed');
     }
   };
 
   const updateVariant = (index, field, value) => {
-    const updatedVariants = variants.map((variant, i) => 
+    const updatedVariants = variants.map((variant, i) =>
       i === index ? { ...variant, [field]: value } : variant
     );
     setVariants(updatedVariants);
   };
 
-  // Get compatible units for selected inventory item
-  const getCompatibleUnits = (inventoryItemId) => {
-    if (!inventoryItemId) return [];
-    
-    const selectedItem = inventoryItems.find(i => i.id === inventoryItemId);
-    if (!selectedItem || !selectedItem.units?.abbreviation) return units;
-    
-    const inventoryUnitAbbr = selectedItem.units.abbreviation;
-    
-    // Find which group this unit belongs to
-    let compatibleGroup = null;
-    for (const [groupName, groupUnits] of Object.entries(unitGroups)) {
-      if (groupUnits.includes(inventoryUnitAbbr)) {
-        compatibleGroup = groupUnits;
-        break;
-      }
-    }
-    
-    // If no compatible group found, return only the exact unit
-    if (!compatibleGroup) {
-      return units.filter(u => u.abbreviation === inventoryUnitAbbr);
-    }
-    
-    // Return units that are in the compatible group
-    return units.filter(u => compatibleGroup.includes(u.abbreviation));
-  };
-
-  const getCurrentIngredients = () => {
-    if (!selectedVariantForIngredients) return [];
-    return variantIngredients[selectedVariantForIngredients] || [];
-  };
-
-  const addIngredient = () => {
-    if (!selectedVariantForIngredients) {
-      toast.error('Please select a variant first');
-      return;
-    }
-    
-    setEditingIngredient({ 
-      id: null, 
-      inventory_item_id: '', 
-      quantity: '', 
-      unit_id: '',
-      isExisting: false
-    });
-  };
-
-  const saveIngredient = () => {
-    if (!editingIngredient.inventory_item_id || !editingIngredient.quantity || !editingIngredient.unit_id) {
-      toast.error('Please fill in all ingredient fields');
-      return;
-    }
-
-    if (parseFloat(editingIngredient.quantity) <= 0) {
-      toast.error('Quantity must be greater than 0');
-      return;
-    }
-
-    const selectedItem = inventoryItems.find(i => i.id === editingIngredient.inventory_item_id);
-    const selectedUnit = units.find(u => u.id === editingIngredient.unit_id);
-
-    const variantKey = selectedVariantForIngredients;
-    const currentVariantIngredients = variantIngredients[variantKey] || [];
-
-    if (editingIngredient.id && editingIngredient.isExisting) {
-      // Update existing ingredient
-      const updated = currentVariantIngredients.map(ing => 
-        ing.id === editingIngredient.id 
-          ? { 
-              ...editingIngredient, 
-              item_name: selectedItem?.name, 
-              unit_abbr: selectedUnit?.abbreviation,
-              inventory_unit_abbr: selectedItem?.units?.abbreviation,
-              isExisting: true
-            }
-          : ing
-      );
-      setVariantIngredients(prev => ({ ...prev, [variantKey]: updated }));
-      toast.success('Ingredient updated');
-    } else if (editingIngredient.id && !editingIngredient.isExisting) {
-      // Update temp ingredient
-      const updated = currentVariantIngredients.map(ing => 
-        ing.id === editingIngredient.id 
-          ? { 
-              ...editingIngredient, 
-              item_name: selectedItem?.name, 
-              unit_abbr: selectedUnit?.abbreviation,
-              inventory_unit_abbr: selectedItem?.units?.abbreviation,
-              isExisting: false
-            }
-          : ing
-      );
-      setVariantIngredients(prev => ({ ...prev, [variantKey]: updated }));
-      toast.success('Ingredient updated');
-    } else {
-      // Add new ingredient
-      const newIngredient = { 
-        ...editingIngredient, 
-        id: `temp_${Date.now()}`,
-        item_name: selectedItem?.name,
-        unit_abbr: selectedUnit?.abbreviation,
-        inventory_unit_abbr: selectedItem?.units?.abbreviation,
-        isExisting: false
-      };
-      setVariantIngredients(prev => ({
-        ...prev,
-        [variantKey]: [...currentVariantIngredients, newIngredient]
-      }));
-      toast.success('Ingredient added');
-    }
-    setEditingIngredient(null);
-  };
-
-  const deleteIngredient = (ingredientToDelete) => {
-    toast((t) => (
-      <div className="flex flex-col space-y-3">
-        <p className="font-medium text-gray-900 dark:text-white">
-          Delete {ingredientToDelete.item_name}?
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              if (ingredientToDelete.isExisting && ingredientToDelete.id && !ingredientToDelete.id.toString().startsWith('temp_')) {
-                setDeletedIngredientIds(prev => [...prev, ingredientToDelete.id]);
-              }
-              
-              const variantKey = selectedVariantForIngredients;
-              const currentIngredients = variantIngredients[variantKey] || [];
-              const updated = currentIngredients.filter(ing => ing.id !== ingredientToDelete.id);
-              
-              setVariantIngredients(prev => ({
-                ...prev,
-                [variantKey]: updated
-              }));
-              
-              toast.success('Ingredient removed', { id: t.id });
-            }}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-          >
-            Delete
-          </button>
-          <button
-            onClick={() => toast.dismiss(t.id)}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-gray-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    ), {
-      duration: 10000,
-      position: 'top-center',
-    });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const validVariants = variants.filter(v => v.name && v.price && parseFloat(v.price) > 0);
-    
-    // Create a mapping of current variant keys to their index or id
-    const variantKeyMap = {};
-    validVariants.forEach((variant, index) => {
-      const key = variant.id || `variant_${index}`;
-      variantKeyMap[key] = {
-        index,
-        id: variant.id,
-        name: variant.name,
-        price: variant.price
-      };
-    });
-    
-    console.log('🔑 Variant Key Map:', variantKeyMap);
-    console.log('🥘 Variant Ingredients:', variantIngredients);
-    
-    // Prepare all ingredients with variant association
-    const allIngredients = [];
-    Object.keys(variantIngredients).forEach(variantKey => {
-      const ingredients = variantIngredients[variantKey] || [];
-      ingredients.forEach(ing => {
-        if (ing.inventory_item_id && ing.quantity && parseFloat(ing.quantity) > 0 && ing.unit_id) {
-          // Clean up the ingredient data
-          const cleanIngredient = {
-            id: ing.id,
-            inventory_item_id: ing.inventory_item_id,
-            quantity: parseFloat(ing.quantity),
-            unit_id: ing.unit_id,
-            variant_key: variantKey, // 'base', 'variant_0', or actual variant.id
-            isExisting: ing.isExisting || false
-          };
-          
-          allIngredients.push(cleanIngredient);
-        }
-      });
-    });
-    
-    console.log('📦 Payload ingredients:', allIngredients);
-    
-    const payload = { 
+
+    const payload = {
       ...formData,
       base_price: parseFloat(formData.base_price) || 0,
       discount_percentage: parseFloat(formData.discount_percentage) || 0,
       tax_rate: parseFloat(formData.tax_rate) || 0,
+      stock_quantity: parseFloat(formData.stock_quantity) || 0,
+      weight: formData.weight || null,
       variants: validVariants,
-      ingredients: allIngredients,
-      deletedIngredientIds: deletedIngredientIds,
-      category_id: category?.id,
-      variantKeyMap // Add this for backend reference
+      category_id: category?.id
     };
-    
+
     console.log('🚀 Submitting payload:', payload);
-    
+
     const success = await onSave(payload);
-    
+
     if (success !== false) {
       resetForm();
     }
   };
-
-  const getAvailableStock = (inventoryItemId) => {
-    const item = inventoryItems.find(i => i.id === inventoryItemId);
-    return item ? `${item.current_stock} ${item.units?.abbreviation || ''}` : 'N/A';
-  };
-
-  const getVariantOptions = () => {
-    const options = [];
-    
-    // Add base product option if no variants or user wants base ingredients
-    if (variants.length === 1 && !variants[0].name) {
-      options.push({ key: 'base', label: 'Base Product (No Variants)' });
-    }
-    
-    // Add valid variants
-    variants.forEach((variant, index) => {
-      if (variant.name && variant.price) {
-        const key = variant.id || `variant_${index}`;
-        options.push({ 
-          key, 
-          label: `${variant.name} - PKR ${variant.price}` 
-        });
-      }
-    });
-    
-    return options;
-  };
-
-  const getUnitGroupInfo = (unitAbbr) => {
-    for (const [groupName, groupUnits] of Object.entries(unitGroups)) {
-      if (groupUnits.includes(unitAbbr)) {
-        return { group: groupName, units: groupUnits };
-      }
-    }
-    return null;
-  };
-
-  const currentIngredients = getCurrentIngredients();
-  const variantOptions = getVariantOptions();
-  const compatibleUnits = editingIngredient?.inventory_item_id 
-    ? getCompatibleUnits(editingIngredient.inventory_item_id)
-    : [];
 
   return (
     <div className="h-full flex flex-col">
@@ -599,14 +263,25 @@ export default function ProductForm({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('ingredients')}
+          onClick={() => setActiveTab('details')}
           className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === 'ingredients'
+            activeTab === 'details'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
-          Ingredients ({Object.values(variantIngredients).flat().length})
+          Product Details
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('eyeglasses')}
+          className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+            activeTab === 'eyeglasses'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+          }`}
+        >
+          Eyeglasses Specs (Optional)
         </button>
       </div>
 
@@ -789,239 +464,232 @@ export default function ProductForm({
             </div>
           )}
 
-          {activeTab === 'ingredients' && (
+          {activeTab === 'details' && (
             <div className="space-y-6">
-              {variantOptions.length === 0 ? (
-                <div className="text-center py-8 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <AlertTriangle className="w-12 h-12 text-amber-600 mx-auto mb-3" />
-                  <p className="text-amber-900 dark:text-amber-100 font-medium">Please add variants first</p>
-                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                    Go to "Basic Info & Variants" tab to add product variants
-                  </p>
+              {/* Inventory & Stock */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                  <Box className="w-5 h-5 mr-2" />
+                  Inventory & Stock
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Quantity</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.stock_quantity}
+                      onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
+                      placeholder="Available units"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <Scale className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <h3 className="font-medium text-blue-900 dark:text-blue-100">Variant-Based Ingredients</h3>
-                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                          Each variant can have different ingredient quantities. Select a variant and add its specific ingredients.
-                        </p>
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">
-                          ✨ Smart Unit Selection: Only compatible units will be shown based on your inventory item's unit!
-                        </p>
-                      </div>
-                    </div>
+              </div>
+
+              {/* Marketing Flags */}
+              <div className="space-y-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                  <Tag className="w-5 h-5 mr-2" />
+                  Marketing Badges
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Select badges that will appear on this product
+                </p>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-indigo-500">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_hot_item}
+                      onChange={(e) => setFormData({ ...formData, is_hot_item: e.target.checked })}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">🔥 Hot Item</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-green-500">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_new_arrival}
+                      onChange={(e) => setFormData({ ...formData, is_new_arrival: e.target.checked })}
+                      className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">✨ New Arrival</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-purple-500">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_best_seller}
+                      onChange={(e) => setFormData({ ...formData, is_best_seller: e.target.checked })}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">⭐ Best Seller</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-yellow-500">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_featured}
+                      onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
+                      className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">💎 Featured</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-red-500">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_on_sale}
+                      onChange={(e) => setFormData({ ...formData, is_on_sale: e.target.checked })}
+                      className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">🏷️ On Sale</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Product Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                  <Tag className="w-5 h-5 mr-2" />
+                  Product Information
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand</label>
+                    <input
+                      type="text"
+                      value={formData.brand}
+                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                      placeholder="e.g., Ray-Ban, Oakley"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Select Variant to Add Ingredients
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={selectedVariantForIngredients || ''}
-                        onChange={(e) => setSelectedVariantForIngredients(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 appearance-none pr-10"
-                      >
-                        <option value="">-- Select a variant --</option>
-                        {variantOptions.map(option => (
-                          <option key={option.key} value={option.key}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                    </div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Material</label>
+                    <input
+                      type="text"
+                      value={formData.material}
+                      onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                      placeholder="e.g., Acetate, Metal, Plastic"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Physical Specifications */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                  <Weight className="w-5 h-5 mr-2" />
+                  Physical Specifications
+                </h3>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Weight</label>
+                    <input
+                      type="text"
+                      value={formData.weight}
+                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                      placeholder="e.g., 25g"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Include unit (e.g., g, kg)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'eyeglasses' && (
+            <div className="space-y-6">
+              <div className="p-4 bg-blue-50 dark:bg-slate-800 rounded-lg mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <strong>Optional Section:</strong> Fill this section only if you are adding eyeglasses, sunglasses, or lens products. Leave empty for other product types.
+                </p>
+              </div>
+
+              {/* Eyeglasses Specifications */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                  <Package className="w-5 h-5 mr-2" />
+                  Eyeglasses Specifications
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Frame Type</label>
+                    <select
+                      value={formData.frame_type}
+                      onChange={(e) => setFormData({ ...formData, frame_type: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select frame type</option>
+                      <option value="Full-Rim">Full-Rim</option>
+                      <option value="Semi-Rimless">Semi-Rimless</option>
+                      <option value="Rimless">Rimless</option>
+                      <option value="Browline">Browline</option>
+                      <option value="Aviator">Aviator</option>
+                      <option value="Wayfarer">Wayfarer</option>
+                      <option value="Cat-Eye">Cat-Eye</option>
+                      <option value="Round">Round</option>
+                      <option value="Square">Square</option>
+                      <option value="Rectangle">Rectangle</option>
+                    </select>
                   </div>
 
-                  {selectedVariantForIngredients && (
-                    <>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                            <Scale className="w-5 h-5" />
-                            Ingredients for {variantOptions.find(v => v.key === selectedVariantForIngredients)?.label}
-                          </h3>
-                          {!editingIngredient && (
-                            <button
-                              type="button"
-                              onClick={addIngredient}
-                              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors flex items-center space-x-1"
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>Add Ingredient</span>
-                            </button>
-                          )}
-                        </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lens Type</label>
+                    <select
+                      value={formData.lens_type}
+                      onChange={(e) => setFormData({ ...formData, lens_type: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select lens type</option>
+                      <option value="Single Vision">Single Vision</option>
+                      <option value="Bifocal">Bifocal</option>
+                      <option value="Progressive">Progressive</option>
+                      <option value="Reading">Reading</option>
+                      <option value="Sunglasses">Sunglasses</option>
+                      <option value="Blue Light">Blue Light</option>
+                      <option value="Photochromic">Photochromic</option>
+                      <option value="Polarized">Polarized</option>
+                    </select>
+                  </div>
 
-                        {editingIngredient && (
-                          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                            <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                              {editingIngredient.isExisting ? 'Edit Ingredient' : 'New Ingredient'}
-                            </h4>
-                            <div className="space-y-3">
-                              <div>
-                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  Inventory Item *
-                                </label>
-                                <select
-                                  value={editingIngredient.inventory_item_id}
-                                  onChange={(e) => {
-                                    const selectedItem = inventoryItems.find(i => i.id === e.target.value);
-                                    setEditingIngredient({ 
-                                      ...editingIngredient, 
-                                      inventory_item_id: e.target.value,
-                                      unit_id: selectedItem?.unit_id || '' // Auto-select the inventory item's unit
-                                    });
-                                  }}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500"
-                                >
-                                  <option value="">Select ingredient</option>
-                                  {inventoryItems.map(item => {
-                                    const outOfStock = item.current_stock <= 0;
-                                    const unitInfo = getUnitGroupInfo(item.units?.abbreviation);
-                                    const unitDisplay = item.units?.abbreviation || 'no unit';
-                                    return (
-                                      <option key={item.id} value={item.id} disabled={outOfStock}>
-                                        {item.name} - {item.current_stock} {unitDisplay}
-                                        {unitInfo && ` [${unitInfo.group}]`}
-                                        {outOfStock && ' - ⚠️ OUT OF STOCK'}
-                                      </option>
-                                    );
-                                  })}
-                                </select>
-                              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Gender</label>
+                    <select
+                      value={formData.gender}
+                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select gender</option>
+                      <option value="Men">Men</option>
+                      <option value="Women">Women</option>
+                      <option value="Unisex">Unisex</option>
+                      <option value="Kids">Kids</option>
+                    </select>
+                  </div>
 
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Quantity per serving *
-                                  </label>
-                                  <input
-                                    type="number"
-                                    step="0.001"
-                                    min="0.001"
-                                    value={editingIngredient.quantity}
-                                    onChange={(e) => setEditingIngredient({ ...editingIngredient, quantity: e.target.value })}
-                                    placeholder="0.000"
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Unit * {compatibleUnits.length > 0 && `(${compatibleUnits.length} compatible)`}
-                                  </label>
-                                  <select
-                                    value={editingIngredient.unit_id}
-                                    onChange={(e) => setEditingIngredient({ ...editingIngredient, unit_id: e.target.value })}
-                                    disabled={!editingIngredient.inventory_item_id}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    <option value="">
-                                      {!editingIngredient.inventory_item_id ? 'Select item first' : 'Select unit'}
-                                    </option>
-                                    {compatibleUnits.map(unit => (
-                                      <option key={unit.id} value={unit.id}>
-                                        {unit.name} ({unit.abbreviation})
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-
-                              {editingIngredient.inventory_item_id && compatibleUnits.length === 0 && (
-                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                                  <p className="text-xs text-amber-800 dark:text-amber-200">
-                                    ⚠️ No compatible units found. Please add compatible units to your system.
-                                  </p>
-                                </div>
-                              )}
-
-                              {editingIngredient.inventory_item_id && compatibleUnits.length > 0 && (
-                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                                  <p className="text-xs text-blue-800 dark:text-blue-200">
-                                    ℹ️ Showing only compatible units for {inventoryItems.find(i => i.id === editingIngredient.inventory_item_id)?.units?.abbreviation} measurement
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex gap-2 mt-4">
-                              <button
-                                type="button"
-                                onClick={saveIngredient}
-                                disabled={!editingIngredient.inventory_item_id || !editingIngredient.quantity || !editingIngredient.unit_id}
-                                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
-                              >
-                                Save Ingredient
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingIngredient(null)}
-                                className="px-4 py-2 bg-gray-300 dark:bg-slate-600 hover:bg-gray-400 dark:hover:bg-slate-500 text-gray-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {loadingIngredients ? (
-                          <div className="text-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Loading ingredients...</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {currentIngredients.length === 0 ? (
-                              <div className="text-center py-8 bg-gray-50 dark:bg-slate-700 rounded-lg">
-                                <Scale className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">No ingredients added for this variant</p>
-                              </div>
-                            ) : (
-                              currentIngredients.map((ingredient) => (
-                                <div key={ingredient.id} className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <h4 className="font-medium text-gray-900 dark:text-white">{ingredient.item_name}</h4>
-                                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                        Quantity: <span className="font-semibold">{ingredient.quantity} {ingredient.unit_abbr}</span> per serving
-                                      </p>
-                                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                                        Available: {getAvailableStock(ingredient.inventory_item_id)} • Inventory Unit: {ingredient.inventory_unit_abbr}
-                                      </p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingIngredient(ingredient)}
-                                        className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                      >
-                                        <Edit2 className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => deleteIngredient(ingredient)}
-                                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Color</label>
+                    <input
+                      type="text"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      placeholder="e.g., Black, Tortoise, Gold"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
