@@ -16,7 +16,10 @@ import {
   Bell,
   BarChart3,
   Bike,
-  Tag
+  Tag,
+  Image,
+  FileText,
+  Zap
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -25,9 +28,9 @@ export default function Sidebar() {
   const [expandedMenu, setExpandedMenu] = useState('products')
 
   const navigation = [
-    { 
-      name: 'Dashboard', 
-      href: '/admin', 
+    {
+      name: 'Dashboard',
+      href: '/admin',
       icon: LayoutDashboard
     },
     {
@@ -38,6 +41,9 @@ export default function Sidebar() {
         { name: 'Catalog', href: '/admin/products/catalog', icon: Package },
       ]
     },
+    { name: 'Time Deals', href: '/admin/time-deals', icon: Zap },
+    { name: 'Banners', href: '/admin/banners', icon: Image },
+    { name: 'Blog & News', href: '/admin/blog', icon: FileText },
     { name: 'Expenses', href: '/admin/expenses', icon: CreditCard },
     { name: 'Supplier', href: '/admin/supplier', icon: Truck },
   ]
