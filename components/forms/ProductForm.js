@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import toast from 'react-hot-toast';
+import ImageCropModal from '@/components/ImageCropModal';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -44,18 +45,12 @@ export default function ProductForm({
     image_url: '',
     base_price: '',
     discount_percentage: '',
-    tax_rate: '',
     // E-commerce specific fields
-    stock_quantity: '',
     brand: '',
     weight: '',
     material: '',
-    // Marketing flags
-    is_hot_item: false,
-    is_new_arrival: false,
-    is_best_seller: false,
-    is_featured: false,
-    is_on_sale: false,
+    // Marketing badge (only one can be selected)
+    badge: '', // Options: 'hot_item', 'new_arrival', 'best_seller', 'featured', 'on_sale', or ''
     // Eyeglasses specific (optional - tab 3)
     frame_type: '',
     lens_type: '',
@@ -67,26 +62,30 @@ export default function ProductForm({
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [tempImageUrl, setTempImageUrl] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (product) {
+      // Determine which badge is active
+      let activeBadge = '';
+      if (product.is_hot_item) activeBadge = 'hot_item';
+      else if (product.is_new_arrival) activeBadge = 'new_arrival';
+      else if (product.is_best_seller) activeBadge = 'best_seller';
+      else if (product.is_featured) activeBadge = 'featured';
+      else if (product.is_on_sale) activeBadge = 'on_sale';
+
       setFormData({
         name: product.name || '',
         description: product.description || '',
         image_url: product.image_url || '',
         base_price: product.base_price || '',
         discount_percentage: product.discount_percentage || '',
-        tax_rate: product.tax_rate || '',
-        stock_quantity: product.stock_quantity || '',
         brand: product.brand || '',
         weight: product.weight || '',
         material: product.material || '',
-        is_hot_item: product.is_hot_item || false,
-        is_new_arrival: product.is_new_arrival || false,
-        is_best_seller: product.is_best_seller || false,
-        is_featured: product.is_featured || false,
-        is_on_sale: product.is_on_sale || false,
+        badge: activeBadge,
         frame_type: product.frame_type || '',
         lens_type: product.lens_type || '',
         gender: product.gender || '',
@@ -108,16 +107,10 @@ export default function ProductForm({
       image_url: '',
       base_price: '',
       discount_percentage: '',
-      tax_rate: '',
-      stock_quantity: '',
       brand: '',
       weight: '',
       material: '',
-      is_hot_item: false,
-      is_new_arrival: false,
-      is_best_seller: false,
-      is_featured: false,
-      is_on_sale: false,
+      badge: '',
       frame_type: '',
       lens_type: '',
       gender: '',
@@ -141,20 +134,41 @@ export default function ProductForm({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size should be less than 10MB');
       return;
     }
 
-    setImageFile(file);
-    
+    // Read file and show crop modal
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setTempImageUrl(e.target.result);
+      setShowCropModal(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedFile) => {
+    setShowCropModal(false);
+    setImageFile(croppedFile);
+
+    // Show preview
     const reader = new FileReader();
     reader.onload = (e) => {
       setImagePreview(e.target.result);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(croppedFile);
 
-    await uploadImageToCloudinary(file);
+    // Upload to Cloudinary
+    await uploadImageToCloudinary(croppedFile);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setTempImageUrl('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const uploadImageToCloudinary = async (file) => {
@@ -227,16 +241,27 @@ export default function ProductForm({
 
     const validVariants = variants.filter(v => v.name && v.price && parseFloat(v.price) > 0);
 
+    // Convert badge selection to individual boolean flags
+    const badgeFlags = {
+      is_hot_item: formData.badge === 'hot_item',
+      is_new_arrival: formData.badge === 'new_arrival',
+      is_best_seller: formData.badge === 'best_seller',
+      is_featured: formData.badge === 'featured',
+      is_on_sale: formData.badge === 'on_sale'
+    };
+
     const payload = {
       ...formData,
+      ...badgeFlags,
       base_price: parseFloat(formData.base_price) || 0,
       discount_percentage: parseFloat(formData.discount_percentage) || 0,
-      tax_rate: parseFloat(formData.tax_rate) || 0,
-      stock_quantity: parseFloat(formData.stock_quantity) || 0,
       weight: formData.weight || null,
       variants: validVariants,
       category_id: category?.id
     };
+
+    // Remove the badge field from payload as it's not in the database
+    delete payload.badge;
 
     console.log('🚀 Submitting payload:', payload);
 
@@ -248,6 +273,16 @@ export default function ProductForm({
   };
 
   return (
+    <>
+      {/* Image Crop Modal */}
+      {showCropModal && (
+        <ImageCropModal
+          image={tempImageUrl}
+          onComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
+
     <div className="h-full flex flex-col">
       <div className="flex border-b border-gray-200 dark:border-slate-700 px-6">
         <button
@@ -325,6 +360,9 @@ export default function ProductForm({
                     {uploadingImage ? 'Uploading...' : 'Upload Image'}
                   </span>
                 </button>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  You can crop, zoom, and rotate the image after selecting
+                </p>
 
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
               </div>
@@ -381,30 +419,17 @@ export default function ProductForm({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Discount (%)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Discount (PKR)</label>
                     <input
                       type="number"
                       step="0.01"
                       min="0"
-                      max="100"
                       value={formData.discount_percentage}
                       onChange={(e) => setFormData({ ...formData, discount_percentage: e.target.value })}
                       placeholder="0.00"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tax Rate (%)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.tax_rate}
-                      onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}
-                      placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Discount amount in Pakistani Rupees</p>
                   </div>
                 </div>
               </div>
@@ -466,87 +491,88 @@ export default function ProductForm({
 
           {activeTab === 'details' && (
             <div className="space-y-6">
-              {/* Inventory & Stock */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
-                  <Box className="w-5 h-5 mr-2" />
-                  Inventory & Stock
-                </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Quantity</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.stock_quantity}
-                      onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                      placeholder="Available units"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Marketing Flags */}
+              {/* Marketing Badge */}
               <div className="space-y-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-700 rounded-lg">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
                   <Tag className="w-5 h-5 mr-2" />
-                  Marketing Badges
+                  Marketing Badge
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Select badges that will appear on this product
+                  Select one badge that will appear on this product
                 </p>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-indigo-500">
+                  <label className={`flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 ${formData.badge === 'hot_item' ? 'border-red-500 ring-2 ring-red-200' : 'border-transparent'}`}>
                     <input
-                      type="checkbox"
-                      checked={formData.is_hot_item}
-                      onChange={(e) => setFormData({ ...formData, is_hot_item: e.target.checked })}
-                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      type="radio"
+                      name="badge"
+                      value="hot_item"
+                      checked={formData.badge === 'hot_item'}
+                      onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                      className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
                     />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">🔥 Hot Item</span>
                   </label>
 
-                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-green-500">
+                  <label className={`flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 ${formData.badge === 'new_arrival' ? 'border-green-500 ring-2 ring-green-200' : 'border-transparent'}`}>
                     <input
-                      type="checkbox"
-                      checked={formData.is_new_arrival}
-                      onChange={(e) => setFormData({ ...formData, is_new_arrival: e.target.checked })}
-                      className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                      type="radio"
+                      name="badge"
+                      value="new_arrival"
+                      checked={formData.badge === 'new_arrival'}
+                      onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                      className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
                     />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">✨ New Arrival</span>
                   </label>
 
-                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-purple-500">
+                  <label className={`flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 ${formData.badge === 'best_seller' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-transparent'}`}>
                     <input
-                      type="checkbox"
-                      checked={formData.is_best_seller}
-                      onChange={(e) => setFormData({ ...formData, is_best_seller: e.target.checked })}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      type="radio"
+                      name="badge"
+                      value="best_seller"
+                      checked={formData.badge === 'best_seller'}
+                      onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                      className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                     />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">⭐ Best Seller</span>
                   </label>
 
-                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-yellow-500">
+                  <label className={`flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 ${formData.badge === 'featured' ? 'border-yellow-500 ring-2 ring-yellow-200' : 'border-transparent'}`}>
                     <input
-                      type="checkbox"
-                      checked={formData.is_featured}
-                      onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-                      className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+                      type="radio"
+                      name="badge"
+                      value="featured"
+                      checked={formData.badge === 'featured'}
+                      onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                      className="w-4 h-4 text-yellow-600 border-gray-300 focus:ring-yellow-500"
                     />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">💎 Featured</span>
                   </label>
 
-                  <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 border-transparent has-[:checked]:border-red-500">
+                  <label className={`flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 ${formData.badge === 'on_sale' ? 'border-orange-500 ring-2 ring-orange-200' : 'border-transparent'}`}>
                     <input
-                      type="checkbox"
-                      checked={formData.is_on_sale}
-                      onChange={(e) => setFormData({ ...formData, is_on_sale: e.target.checked })}
-                      className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                      type="radio"
+                      name="badge"
+                      value="on_sale"
+                      checked={formData.badge === 'on_sale'}
+                      onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                      className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
                     />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">🏷️ On Sale</span>
+                  </label>
+
+                  <label className={`flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-2 ${formData.badge === '' ? 'border-gray-400 ring-2 ring-gray-200' : 'border-transparent'}`}>
+                    <input
+                      type="radio"
+                      name="badge"
+                      value=""
+                      checked={formData.badge === ''}
+                      onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                      className="w-4 h-4 text-gray-600 border-gray-300 focus:ring-gray-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">❌ No Badge</span>
                   </label>
                 </div>
               </div>
@@ -558,28 +584,26 @@ export default function ProductForm({
                   Product Information
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand</label>
-                    <input
-                      type="text"
-                      value={formData.brand}
-                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                      placeholder="e.g., Ray-Ban, Oakley"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand</label>
+                  <input
+                    type="text"
+                    value={formData.brand}
+                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                    placeholder="e.g., Ray-Ban, Oakley"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Material</label>
-                    <input
-                      type="text"
-                      value={formData.material}
-                      onChange={(e) => setFormData({ ...formData, material: e.target.value })}
-                      placeholder="e.g., Acetate, Metal, Plastic"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Material</label>
+                  <textarea
+                    value={formData.material}
+                    onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                    placeholder="Describe the materials used, e.g., Acetate frame with metal hinges, CR-39 lenses with anti-reflective coating"
+                    rows="3"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                  />
                 </div>
               </div>
 
@@ -706,5 +730,6 @@ export default function ProductForm({
         </div>
       </form>
     </div>
+    </>
   );
 }

@@ -199,7 +199,19 @@ export default function CatalogPage() {
             image_url,
             base_price,
             discount_percentage,
-            is_active
+            is_active,
+            brand,
+            material,
+            weight,
+            is_hot_item,
+            is_new_arrival,
+            is_best_seller,
+            is_featured,
+            is_on_sale,
+            frame_type,
+            lens_type,
+            gender,
+            color
           )
         `
         )
@@ -274,6 +286,36 @@ export default function CatalogPage() {
       toast.error("Error saving category");
     }
   };
+
+  const handleDeleteCategory = async (category) => {
+    if (!confirm(`Are you sure you want to delete "${category.name}"? All products in this category will also be deleted.`)) {
+      return;
+    }
+
+    const deleteToast = toast.loading("Deleting category...");
+
+    try {
+      const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", category.id);
+
+      if (error) throw error;
+
+      toast.success("Category deleted successfully", { id: deleteToast });
+
+      // If we just deleted the active category, clear it
+      if (activeCategory?.id === category.id) {
+        setActiveCategory(null);
+      }
+
+      loadCategories();
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast.error("Failed to delete category: " + error.message, { id: deleteToast });
+    }
+  };
+
 // FIXED handleProductSubmit function for catalog page
 // Replace your current handleProductSubmit with this
 
@@ -294,9 +336,7 @@ const handleProductSubmit = async (productData) => {
       image_url: productData.image_url,
       base_price: parseFloat(productData.base_price) || 0,
       discount_percentage: parseFloat(productData.discount_percentage) || 0,
-      tax_rate: parseFloat(productData.tax_rate) || 0,
       // E-commerce fields
-      stock_quantity: productData.stock_quantity ? parseInt(productData.stock_quantity) : 0,
       brand: productData.brand || null,
       material: productData.material || null,
       weight: productData.weight || null,
@@ -679,10 +719,9 @@ const handleProductSubmit = async (productData) => {
     }
   };
 
-  // FIXED: Calculate price - Use base_price directly, not adding to variants
-  const calculateFinalPrice = (basePrice, discountPercentage) => {
-    const discount = (basePrice * (discountPercentage || 0)) / 100;
-    return (basePrice - discount).toFixed(2);
+  // Calculate final price by subtracting discount amount (in PKR) from base price
+  const calculateFinalPrice = (basePrice, discountAmount) => {
+    return (basePrice - (discountAmount || 0)).toFixed(2);
   };
 
   // Get price display text
@@ -983,8 +1022,16 @@ const handleProductSubmit = async (productData) => {
                       setShowCategorySidebar(true);
                     }}
                     className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+                    title="Edit Category"
                   >
                     <Edit2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCategory(activeCategory)}
+                    className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    title="Delete Category"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>
               </div>
