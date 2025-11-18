@@ -96,6 +96,16 @@ export default function CatalogPage() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
 
+  // Delete modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Category delete modal states
+  const [showCategoryDeleteModal, setShowCategoryDeleteModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+
   // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -287,32 +297,45 @@ export default function CatalogPage() {
     }
   };
 
-  const handleDeleteCategory = async (category) => {
-    if (!confirm(`Are you sure you want to delete "${category.name}"? All products in this category will also be deleted.`)) {
-      return;
-    }
+  // Show delete confirmation modal for category
+  const handleDeleteCategory = (category) => {
+    setCategoryToDelete(category);
+    setShowCategoryDeleteModal(true);
+  };
 
+  // Confirm and delete category
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setIsDeletingCategory(true);
     const deleteToast = toast.loading("Deleting category...");
 
     try {
       const { error } = await supabase
         .from("categories")
         .delete()
-        .eq("id", category.id);
+        .eq("id", categoryToDelete.id);
 
       if (error) throw error;
 
       toast.success("Category deleted successfully", { id: deleteToast });
 
       // If we just deleted the active category, clear it
-      if (activeCategory?.id === category.id) {
+      if (activeCategory?.id === categoryToDelete.id) {
         setActiveCategory(null);
       }
+
+      // Close modal and reset state
+      setShowCategoryDeleteModal(false);
+      setCategoryToDelete(null);
 
       loadCategories();
     } catch (error) {
       console.error("Error deleting category:", error);
-      toast.error("Failed to delete category: " + error.message, { id: deleteToast });
+      toast.error("Failed to delete category: " + error.message, {
+        id: deleteToast,
+      });
+    } finally {
+      setIsDeletingCategory(false);
     }
   };
 
@@ -629,8 +652,17 @@ const handleProductSubmit = async (productData) => {
     return false;
   }
 };
-  // Delete product with image cleanup
-  const handleDeleteProduct = async (product) => {
+  // Show delete confirmation modal
+  const handleDeleteProduct = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm and delete product
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+
+    setIsDeleting(true);
     const deleteToast = toast.loading("Deleting product...");
 
     try {
@@ -638,7 +670,7 @@ const handleProductSubmit = async (productData) => {
       const { error: variantsError } = await supabase
         .from("product_variants")
         .delete()
-        .eq("product_id", product.id);
+        .eq("product_id", productToDelete.id);
 
       if (variantsError) throw variantsError;
 
@@ -646,7 +678,7 @@ const handleProductSubmit = async (productData) => {
       const { error: productError } = await supabase
         .from("products")
         .delete()
-        .eq("id", product.id);
+        .eq("id", productToDelete.id);
 
       if (productError) throw productError;
 
@@ -654,12 +686,19 @@ const handleProductSubmit = async (productData) => {
       // They can be managed from Cloudinary dashboard if needed
 
       toast.success("Product deleted successfully", { id: deleteToast });
+
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setProductToDelete(null);
+
       loadCategories();
     } catch (error) {
       console.error("Error deleting product:", error);
       toast.error("Error deleting product: " + error.message, {
         id: deleteToast,
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -769,11 +808,11 @@ const handleProductSubmit = async (productData) => {
                 ></div>
               ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
               {[...Array(8)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-64 bg-gray-200 dark:bg-slate-700 rounded-lg"
+                  className="h-48 sm:h-64 bg-gray-200 dark:bg-slate-700 rounded-lg"
                 ></div>
               ))}
             </div>
@@ -815,18 +854,18 @@ const handleProductSubmit = async (productData) => {
   return (
     <div className="h-full flex flex-col">
       {/* Top Bar */}
-      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               Product Catalog
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
               Manage your restaurant's menu items and categories
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center flex-wrap gap-2 sm:gap-3">
             {menus.length > 1 && (
               <div className="relative">
                 <select
@@ -844,18 +883,18 @@ const handleProductSubmit = async (productData) => {
               </div>
             )}
 
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <div className="relative flex-1 sm:flex-initial min-w-0">
+              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-64 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 w-full sm:w-48 md:w-64 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+            <div className="hidden sm:flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-2 rounded-md transition-colors ${
@@ -881,10 +920,11 @@ const handleProductSubmit = async (productData) => {
             <button
               onClick={() => setShowCategorySidebar(true)}
               disabled={categoriesLoading}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+              className="px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
-              <span>Add Category</span>
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Add Category</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </div>
         </div>
@@ -945,11 +985,11 @@ const handleProductSubmit = async (productData) => {
         {categoriesLoading ? (
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 dark:bg-slate-700 rounded w-64"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
               {[...Array(8)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-64 bg-gray-200 dark:bg-slate-700 rounded-lg"
+                  className="h-48 sm:h-64 bg-gray-200 dark:bg-slate-700 rounded-lg"
                 ></div>
               ))}
             </div>
@@ -1011,9 +1051,9 @@ const handleProductSubmit = async (productData) => {
                       setEditingProduct(null);
                       setShowProductSidebar(true);
                     }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center space-x-1.5 sm:space-x-2"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span>Add Product</span>
                   </button>
                   <button
@@ -1062,7 +1102,7 @@ const handleProductSubmit = async (productData) => {
               <div
                 className={
                   viewMode === "grid"
-                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4"
+                    ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4"
                     : "space-y-3"
                 }
               >
@@ -1091,12 +1131,12 @@ const handleProductSubmit = async (productData) => {
                           )}
                         </div>
 
-                        <div className="p-4">
-                          <h4 className="font-medium text-gray-900 dark:text-white text-sm mb-1 line-clamp-2">
+                        <div className="p-2 sm:p-4">
+                          <h4 className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm mb-1 line-clamp-2">
                             {product.name}
                           </h4>
                           {product.categoryName && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 sm:mb-2 truncate">
                               {product.categoryName}
                             </p>
                           )}
@@ -1107,14 +1147,14 @@ const handleProductSubmit = async (productData) => {
 
                               <div className="flex items-center mt-1">
                                 <div
-                                  className={`w-2 h-2 rounded-full mr-2 ${
+                                  className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1 sm:mr-2 ${
                                     product.is_active
                                       ? "bg-green-500"
                                       : "bg-red-500"
                                   }`}
                                 ></div>
                                 <span
-                                  className={`text-xs ${
+                                  className={`text-[10px] sm:text-xs ${
                                     product.is_active
                                       ? "text-green-600 dark:text-green-400"
                                       : "text-red-600 dark:text-red-400"
@@ -1125,7 +1165,7 @@ const handleProductSubmit = async (productData) => {
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex flex-col sm:flex-row items-center gap-1 opacity-0 group-hover:opacity-100 sm:transition-opacity">
                               <button
                                 onClick={async (e) => {
                                   e.stopPropagation();
@@ -1164,20 +1204,20 @@ const handleProductSubmit = async (productData) => {
                                     );
                                   }
                                 }}
-                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                                className="p-1 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                                 title="Edit"
                               >
-                                <Edit2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400" />
                               </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDeleteProduct(product);
                                 }}
-                                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                className="p-1 sm:p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                 title="Delete"
                               >
-                                <Trash2 className="w-4 h-4 text-red-500" />
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500" />
                               </button>
                             </div>
                           </div>
@@ -1338,6 +1378,144 @@ const handleProductSubmit = async (productData) => {
           onSave={handleCategorySubmit}
         />
       </RightSidebar>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            onClick={() => !isDeleting && setShowDeleteModal(false)}
+          />
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 w-full max-w-md shadow-2xl">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Delete Product
+                </h2>
+              </div>
+
+              <div className="p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                      <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-900 dark:text-white font-medium mb-2">
+                      Are you sure you want to delete "{productToDelete?.name}"?
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      This action cannot be undone. All product variants and related data will be permanently deleted.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setProductToDelete(null);
+                    }}
+                    disabled={isDeleting}
+                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteProduct}
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        <span>Delete Product</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Category Delete Confirmation Modal */}
+      {showCategoryDeleteModal && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            onClick={() => !isDeletingCategory && setShowCategoryDeleteModal(false)}
+          />
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 w-full max-w-md shadow-2xl">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Delete Category
+                </h2>
+              </div>
+
+              <div className="p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                      <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-900 dark:text-white font-medium mb-2">
+                      Are you sure you want to delete "{categoryToDelete?.name}"?
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      This action cannot be undone. All products in this category will also be permanently deleted.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCategoryDeleteModal(false);
+                      setCategoryToDelete(null);
+                    }}
+                    disabled={isDeletingCategory}
+                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteCategory}
+                    disabled={isDeletingCategory}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {isDeletingCategory ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        <span>Delete Category</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

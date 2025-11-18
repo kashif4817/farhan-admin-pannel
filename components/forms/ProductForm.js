@@ -284,11 +284,11 @@ export default function ProductForm({
       )}
 
     <div className="h-full flex flex-col">
-      <div className="flex border-b border-gray-200 dark:border-slate-700 px-6">
+      <div className="flex overflow-x-auto border-b border-gray-200 dark:border-slate-700 px-3 sm:px-6 scrollbar-hide">
         <button
           type="button"
           onClick={() => setActiveTab('basic')}
-          className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+          className={`px-3 sm:px-6 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'basic'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -299,7 +299,7 @@ export default function ProductForm({
         <button
           type="button"
           onClick={() => setActiveTab('details')}
-          className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+          className={`px-3 sm:px-6 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'details'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -310,7 +310,7 @@ export default function ProductForm({
         <button
           type="button"
           onClick={() => setActiveTab('eyeglasses')}
-          className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+          className={`px-3 sm:px-6 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'eyeglasses'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -321,7 +321,7 @@ export default function ProductForm({
       </div>
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {activeTab === 'basic' && (
             <div className="space-y-6">
               <div className="space-y-4">

@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "BIZPOS - Restaurant Manager",
-  description: "Modern Point of Sale System for Restaurants",
+  title: "Farhan Ainak & Watch Point - Admin Panel",
+  description: "E-commerce Admin Panel for Eyewear & Watch Store",
 };
 
 export default function RootLayout({ children }) {

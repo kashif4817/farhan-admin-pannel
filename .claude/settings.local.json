@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(test:*)",
+      "Bash(rm:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(if exist node_modules rmdir /s /q node_modules)",
+      "Bash(rd:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx next dev)",
+      "Bash(where:*)",
+      "Bash(node:*)",
+      "Bash(tail:*)"
     ],
     "deny": [],
     "ask": []

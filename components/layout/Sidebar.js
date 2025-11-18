@@ -19,11 +19,12 @@ import {
   Tag,
   Image,
   FileText,
-  Zap
+  Zap,
+  X
 } from 'lucide-react'
 import { useState } from 'react'
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname()
   const [expandedMenu, setExpandedMenu] = useState('products')
 
@@ -41,9 +42,9 @@ export default function Sidebar() {
         { name: 'Catalog', href: '/admin/products/catalog', icon: Package },
       ]
     },
-    { name: 'Time Deals', href: '/admin/time-deals', icon: Zap },
-    { name: 'Banners', href: '/admin/banners', icon: Image },
-    { name: 'Blog & News', href: '/admin/blog', icon: FileText },
+    // { name: 'Time Deals', href: '/admin/time-deals', icon: Zap },
+    // { name: 'Banners', href: '/admin/banners', icon: Image },
+    // { name: 'Blog & News', href: '/admin/blog', icon: FileText },
     { name: 'Expenses', href: '/admin/expenses', icon: CreditCard },
     { name: 'Supplier', href: '/admin/supplier', icon: Truck },
   ]
@@ -52,20 +53,50 @@ export default function Sidebar() {
     setExpandedMenu(expandedMenu === menuName ? null : menuName)
   }
 
+  const handleLinkClick = () => {
+    if (onClose) {
+      onClose()
+    }
+  }
+
   return (
-    <div className="w-60 bg-slate-800 flex flex-col h-screen">
-      {/* Logo */}
-      <div className="px-4 py-6 border-b border-slate-700">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <Store className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-white font-semibold text-base">Ecommrace</h1>
-            <p className="text-slate-400 text-xs">Product Manager</p>
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed md:static inset-y-0 left-0 z-50
+        w-60 bg-slate-800 flex flex-col h-screen
+        transform transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        {/* Logo */}
+        <div className="px-4 py-6 border-b border-slate-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <Store className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-white font-semibold text-base">Ecommrace</h1>
+                <p className="text-slate-400 text-xs">Product Manager</p>
+              </div>
+            </div>
+            {/* Close button for mobile */}
+            <button
+              onClick={onClose}
+              className="md:hidden text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
-      </div>
       
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -99,6 +130,7 @@ export default function Sidebar() {
                       <Link
                         key={subItem.name}
                         href={subItem.href}
+                        onClick={handleLinkClick}
                         className={`flex items-center space-x-3 px-3 py-2 text-sm rounded-md transition-colors ${
                           pathname === subItem.href
                             ? 'bg-indigo-600 text-white'
@@ -119,6 +151,7 @@ export default function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={handleLinkClick}
               className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 pathname === item.href
                   ? 'bg-indigo-600 text-white'
@@ -133,6 +166,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom Stats */}
-    </div>
+      </div>
+    </>
   )
 }
