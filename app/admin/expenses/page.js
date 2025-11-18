@@ -698,32 +698,33 @@ export default function AdminExpensesPage() {
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-slate-900">
       {/* Top Bar */}
-      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               Expense Management
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
               Track and analyze business expenses
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center flex-wrap gap-2 sm:gap-3">
             <button
               onClick={exportToCSV}
               disabled={expenses.length === 0}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+              className="px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap"
             >
-              <Download className="w-4 h-4" />
-              <span>Export CSV</span>
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Export CSV</span>
+              <span className="sm:hidden">Export</span>
             </button>
 
             <button
               onClick={() => setShowCategorySidebar(true)}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+              className="px-3 sm:px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap"
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>Categories</span>
             </button>
 
@@ -733,191 +734,200 @@ export default function AdminExpensesPage() {
                 resetExpenseForm();
                 setShowExpenseSidebar(true);
               }}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+              className="px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
-              <span>Add Expense</span>
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Add Expense</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </div>
         </div>
 
         {/* Filters & Search */}
-        <div className="flex items-center space-x-3 flex-wrap gap-y-3">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          {/* Search Input - Full width on mobile */}
+          <div className="relative flex-1 sm:min-w-[180px] sm:max-w-md w-full">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <input
               type="text"
               placeholder="Search expenses..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            {dateFilterOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          {dateFilter === "custom" && (
-            <>
-              <input
-                type="date"
-                value={customDateFrom}
-                onChange={(e) => setCustomDateFrom(e.target.value)}
-                className="px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <span className="text-gray-500 dark:text-gray-400">to</span>
-              <input
-                type="date"
-                value={customDateTo}
-                onChange={(e) => setCustomDateTo(e.target.value)}
-                className="px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </>
-          )}
-
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value)}
-            className="px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="all">All Payments</option>
-            {paymentMethods.map((method) => (
-              <option key={method.id} value={method.id}>
-                {method.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="date_desc">Newest First</option>
-            <option value="date_asc">Oldest First</option>
-            <option value="amount_desc">Highest Amount</option>
-            <option value="amount_asc">Lowest Amount</option>
-          </select>
-
-          <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode("card")}
-              className={`p-2 rounded-md transition-colors ${
-                viewMode === "card"
-                  ? "bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-500 dark:text-gray-400"
-              }`}
+          {/* Filters Row - Wrap on mobile */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-2 sm:px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <Receipt className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("table")}
-              className={`p-2 rounded-md transition-colors ${
-                viewMode === "table"
-                  ? "bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-500 dark:text-gray-400"
-              }`}
+              {dateFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            {dateFilter === "custom" && (
+              <>
+                <input
+                  type="date"
+                  value={customDateFrom}
+                  onChange={(e) => setCustomDateFrom(e.target.value)}
+                  className="px-2 sm:px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">to</span>
+                <input
+                  type="date"
+                  value={customDateTo}
+                  onChange={(e) => setCustomDateTo(e.target.value)}
+                  className="px-2 sm:px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </>
+            )}
+
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-2 sm:px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <FileText className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("analytics")}
-              className={`p-2 rounded-md transition-colors ${
-                viewMode === "analytics"
-                  ? "bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-500 dark:text-gray-400"
-              }`}
+              <option value="all">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              className="px-2 sm:px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <BarChart3 className="w-4 h-4" />
-            </button>
+              <option value="all">All Payments</option>
+              {paymentMethods.map((method) => (
+                <option key={method.id} value={method.id}>
+                  {method.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-2 sm:px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="date_desc">Newest First</option>
+              <option value="date_asc">Oldest First</option>
+              <option value="amount_desc">Highest Amount</option>
+              <option value="amount_asc">Lowest Amount</option>
+            </select>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode("card")}
+                className={`p-1.5 sm:p-2 rounded-md transition-colors ${
+                  viewMode === "card"
+                    ? "bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-500 dark:text-gray-400"
+                }`}
+                title="Card View"
+              >
+                <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={`p-1.5 sm:p-2 rounded-md transition-colors ${
+                  viewMode === "table"
+                    ? "bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-500 dark:text-gray-400"
+                }`}
+                title="Table View"
+              >
+                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("analytics")}
+                className={`p-1.5 sm:p-2 rounded-md transition-colors ${
+                  viewMode === "analytics"
+                    ? "bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-500 dark:text-gray-400"
+                }`}
+                title="Analytics View"
+              >
+                <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+      <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-3 sm:p-4">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 Total Expenses
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mt-1 truncate">
                 PKR {getTotalExpenses().toFixed(2)}
               </p>
             </div>
-            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-3 sm:p-4">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 Average Expense
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mt-1 truncate">
                 PKR {getAverageExpense().toFixed(2)}
               </p>
             </div>
-            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center">
-              <BarChart3 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-3 sm:p-4">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 Total Count
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 {expenses.length}
               </p>
             </div>
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
-              <Receipt className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+              <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-3 sm:p-4">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 Categories
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 {Object.keys(categoryBreakdown).length}
               </p>
             </div>
-            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center">
-              <Tag className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+              <Tag className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
             </div>
           </div>
         </div>
@@ -927,9 +937,9 @@ export default function AdminExpensesPage() {
 
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-6">
         {viewMode === "card" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {expenses.length === 0 ? (
               <div className="col-span-full text-center py-16">
                 <Receipt className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
@@ -962,17 +972,17 @@ export default function AdminExpensesPage() {
                 return (
                   <div
                     key={expense.id}
-                    className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow group"
+                    className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-3 sm:p-4 hover:shadow-md transition-shadow group"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center">
+                    <div className="flex items-start justify-between mb-2 sm:mb-3">
+                      <div className="flex items-center min-w-0 flex-1">
                         <div
-                          className={`w-10 h-10 rounded-lg bg-gradient-to-r ${paymentColor} flex items-center justify-center mr-3`}
+                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r ${paymentColor} flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0`}
                         >
-                          <PaymentIcon className="w-5 h-5 text-white" />
+                          <PaymentIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm truncate">
                             {expense.expense_categories?.name ||
                               "Uncategorized"}
                           </h3>
@@ -981,18 +991,18 @@ export default function AdminExpensesPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 sm:transition-opacity flex-shrink-0 ml-2">
                         <button
                           onClick={() => openEditExpense(expense)}
                           className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                         >
-                          <Edit2 className="w-4 h-4 text-blue-500" />
+                          <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
                         </button>
                         <button
                           onClick={() => handleDeleteExpense(expense)}
                           className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                         >
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500" />
                         </button>
                       </div>
                     </div>
@@ -1004,16 +1014,16 @@ export default function AdminExpensesPage() {
                     )}
 
                     {expense.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-2 sm:mb-3 line-clamp-2">
                         {expense.description}
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-gray-100 dark:border-slate-700">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate mr-2">
                         {expense.payment_method}
                       </span>
-                      <span className="text-lg font-bold text-gray-900 dark:text-white">
+                      <span className="text-base sm:text-lg font-bold text-gray-900 dark:text-white whitespace-nowrap">
                         PKR {parseFloat(expense.total_amount).toFixed(2)}
                       </span>
                     </div>
@@ -1580,7 +1590,7 @@ export default function AdminExpensesPage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Payment Method *
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {paymentMethods.map((method) => {
                 const MethodIcon = method.icon;
                 return (
@@ -1605,7 +1615,7 @@ export default function AdminExpensesPage() {
                       >
                         <MethodIcon className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-xs font-medium text-gray-900 dark:text-white">
+                      <span className="text-xs font-medium text-gray-900 dark:text-white truncate max-w-full">
                         {method.name}
                       </span>
                     </div>

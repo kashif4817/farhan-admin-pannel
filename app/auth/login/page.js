@@ -42,7 +42,7 @@ export default function LoginPage() {
             </svg>
           </div> */}
           <h2 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Farhan Ainak Point Admin
+            Farhan Ainak & watch Point Admin pannel
           </h2>
           <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 flex items-center justify-center gap-2">
             <Sparkles className="w-4 h-4" />
